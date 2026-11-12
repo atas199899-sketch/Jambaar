@@ -52,7 +52,7 @@ func _dev_args() -> void:
 				var sd = chapter.Soldier.new()
 				chapter.add_child(sd)
 				sd.setup(i, chapter.TIRAILLEUR if i == 0 else chapter.ENEMY, null)
-				sd.global_position = p + Vector3(-1.2 + i * 2.4, 0.2, 3.5)
+				sd.global_position = p + Vector3(-0.8 + i * 1.6, 0.2, 2.4)
 				sd.set_physics_process(false)
 				sd.model.rotation.y = PI
 				sd.model.animate(0.0, 0.016)

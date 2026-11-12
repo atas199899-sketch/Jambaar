@@ -15,7 +15,20 @@ var reloading := 0.0
 var muzzle: Node3D
 
 
+var model_kind := "mas36"
+
+
 func _ready() -> void:
+	var Props = load("res://scripts/combat/props.gd")
+	if Props.has(model_kind):
+		# vrai modèle 3D (Sketchfab, CC BY) ; origine sur la poignée, canon vers -Z
+		var m: Node3D = Props.make(model_kind)
+		m.position = Vector3(0, 0.02, -0.05)
+		add_child(m)
+		muzzle = Node3D.new()
+		muzzle.position = Vector3(0, 0.04, m.get_meta("muzzle_z") - 0.05)
+		add_child(muzzle)
+		return
 	var wood := StandardMaterial3D.new()
 	wood.albedo_color = Color("5a3a22")
 	wood.roughness = 0.7

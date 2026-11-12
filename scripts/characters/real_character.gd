@@ -393,6 +393,13 @@ func add_hat(kind: String, color: Color) -> void:
 	m.albedo_color = color
 	m.roughness = 0.75 if kind == "chechia" else 0.55
 	m.metallic = 0.0 if kind == "chechia" else 0.3
+	var Props = load("res://scripts/combat/props.gd")
+	if kind == "adrian" and Props.has("adrian"):
+		var h: Node3D = Props.make("adrian")
+		h.position = Vector3(0, 0.07, 0.0)
+		h.scale = Vector3.ONE * 0.92
+		root.add_child(h)
+		return
 	match kind:
 		"chechia":
 			_hat_part(root, _cyl(0.072, 0.092, 0.11), m, Vector3(0, 0.05, 0), Vector3.ONE)

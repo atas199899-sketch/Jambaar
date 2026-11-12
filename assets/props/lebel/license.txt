@@ -1,0 +1,11 @@
+Model Information:
+* title:	Lebel rifle with Rosalie
+* source:	https://sketchfab.com/3d-models/lebel-rifle-with-rosalie-f187160e1be34929ba3226dcaad5b0a0
+* author:	Warloo (https://sketchfab.com/WarlooColonel)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Lebel rifle with Rosalie" (https://sketchfab.com/3d-models/lebel-rifle-with-rosalie-f187160e1be34929ba3226dcaad5b0a0) by Warloo (https://sketchfab.com/WarlooColonel) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
