@@ -169,7 +169,7 @@ func _physics_process(delta: float) -> void:
 				# bloqué par une haie ou un muret : on l'enjambe
 				if Vector2(velocity.x, velocity.z).length() < 0.5:
 					_stuck += delta
-					if _stuck > 0.5 and not _vaulting:
+					if _stuck > 0.8 and not _vaulting:
 						_vault(to.normalized())
 				else:
 					_stuck = 0.0
@@ -211,11 +211,23 @@ func _physics_process(delta: float) -> void:
 ## Enjambe un obstacle bas (haie, muret) : on cherche un point libre de l'autre côté.
 func _vault(dir: Vector3) -> void:
 	_stuck = 0.0
+	# on ne saute que devant un vrai obstacle bas (muret, haie) :
+	# quelque chose à hauteur de genou, rien à hauteur de tête, et pas un autre soldat
+	var space := get_world_3d().direct_space_state
+	var base := global_position
+	var knee := space.intersect_ray(PhysicsRayQueryParameters3D.create(base + Vector3(0, 0.5, 0), base + Vector3(0, 0.5, 0) + dir * 1.2, 1, [get_rid()]))
+	if knee.is_empty():
+		return
+	var head := space.intersect_ray(PhysicsRayQueryParameters3D.create(base + Vector3(0, 1.7, 0), base + Vector3(0, 1.7, 0) + dir * 1.2, 1, [get_rid()]))
+	if not head.is_empty():
+		return   # mur ou maison : trop haut, on contourne plutôt
 	for dist in [1.6, 2.2, 2.8]:
 		var land: Vector3 = global_position + dir * dist
 		var t := Transform3D(Basis(), land + Vector3(0, 0.1, 0))
 		if not test_move(t, Vector3(0, 0.05, 0)):
 			_vaulting = true
+			if OS.get_cmdline_user_args().has("--trace"):
+				print("SAUT ", global_position.snapped(Vector3.ONE))
 			model.play_action("Jump", 1.4)
 			var tw := create_tween()
 			tw.tween_property(self, "global_position", global_position + dir * dist * 0.5 + Vector3(0, 1.5, 0), 0.25)
