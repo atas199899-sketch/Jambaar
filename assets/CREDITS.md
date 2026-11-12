@@ -10,3 +10,4 @@
 | « Coupe-Coupe Sénégalais 1er type » | Warloo | CC BY 4.0 | https://sketchfab.com/3d-models/coupe-coupe-senegalais-1er-type-5a189982dfdb465da9c040dcf3b98b2c |
 | « M26 Adrian Helmet » | Superplunger | CC BY 4.0 | https://sketchfab.com/3d-models/m26-adrian-helmet-f2fafe99c7e34cafae73fa90b676f756 |
 | Carte de Dakar | © les contributeurs OpenStreetMap | ODbL | https://www.openstreetmap.org/copyright |
+| « WW2 Panzergrenadier 2k » (assaillants ; aigle et emblèmes de boucle effacés de la texture) | britdawgmasterfunk | CC BY 4.0 | https://sketchfab.com/3d-models/ww2-panzergrenadier-2k-cc0-6a104431bcb8400080b79446ec019696 |
