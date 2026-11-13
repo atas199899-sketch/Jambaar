@@ -3,6 +3,7 @@ extends CharacterBody3D
 ## culasse et rechargement (R), accroupi (C) pour se mettre à couvert, pansements (H).
 
 const Humanoid = preload("res://scripts/characters/humanoid.gd")
+const ModelCharacter = preload("res://scripts/characters/model_character.gd")
 const Rifle = preload("res://scripts/combat/rifle.gd")
 const Fx = preload("res://scripts/combat/fx.gd")
 const Step = preload("res://scripts/core/step.gd")
@@ -49,7 +50,7 @@ func setup(look: Dictionary) -> void:
 	_col.shape = _cap
 	_col.position.y = 0.875
 	add_child(_col)
-	model = Humanoid.new()
+	model = (ModelCharacter.new() if look.has("model") and ResourceLoader.exists(look.model) else Humanoid.new())
 	add_child(model)
 	model.build(look)
 	rifle = Rifle.new()
@@ -58,6 +59,7 @@ func setup(look: Dictionary) -> void:
 		hand.add_child(rifle)
 		rifle.position = Vector3(0.0, 0.08, 0.02)
 		rifle.rotation = Vector3(PI / 2.0, 0.0, 0.0)
+		_fix_rifle.call_deferred()
 	cam_pivot = Node3D.new()
 	cam_pivot.position.y = 1.55
 	add_child(cam_pivot)
@@ -78,6 +80,13 @@ func setup(look: Dictionary) -> void:
 	camera.make_current()
 	if DisplayServer.get_name() != "headless" and not OS.has_feature("web"):
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func _fix_rifle() -> void:
+	var gs: Vector3 = rifle.get_parent().global_transform.basis.get_scale()
+	if gs.x > 0.0 and absf(gs.x - 1.0) > 0.05:
+		rifle.scale = Vector3.ONE / gs.x
+		rifle.position = rifle.position / gs.x
 
 
 func is_alive() -> bool:

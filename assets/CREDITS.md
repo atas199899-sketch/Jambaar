@@ -11,3 +11,4 @@
 | « M26 Adrian Helmet » | Superplunger | CC BY 4.0 | https://sketchfab.com/3d-models/m26-adrian-helmet-f2fafe99c7e34cafae73fa90b676f756 |
 | Carte de Dakar | © les contributeurs OpenStreetMap | ODbL | https://www.openstreetmap.org/copyright |
 | « WW2 Panzergrenadier 2k » (assaillants ; aigle et emblèmes de boucle effacés de la texture) | britdawgmasterfunk | CC BY 4.0 | https://sketchfab.com/3d-models/ww2-panzergrenadier-2k-cc0-6a104431bcb8400080b79446ec019696 |
+| « WW2 Soviet Uniform » (base des tirailleurs : recoloré en kaki, calot à étoile retiré, casque Adrian ajouté) | tnnv | CC BY 4.0 | https://sketchfab.com/3d-models/ww2-soviet-uniform-f85a4ed8c33a43eca1a7caa45f7acf99 |

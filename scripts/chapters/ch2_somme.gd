@@ -18,7 +18,10 @@ const TRUCK_POS := Vector3(3.5, 0, 82.0)
 ## Tenues : tirailleurs (kaki, casque Adrian) ; ennemis (gris-vert, casque, sans insigne).
 ## Tenue des tirailleurs en 1940 : capote kaki moutarde, culotte, bandes molletières, brodequins,
 ## casque Adrian, ceinturon, cartouchières et havresac (d'après les photos d'époque).
-const TIRAILLEUR := {"style": "capote", "top": Color("7d6a40"), "bottom": Color("6e5e3a"), "shoes": Color("3a2818"), "sandals": false,
+const TIRAILLEUR := {"model": "res://assets/characters/tirailleur/scene.gltf", "height": 1.78,
+	"textures": {"Clothes": "res://assets/characters/tirailleur/textures/Clothes_tirailleur.png", "Body": "res://assets/characters/tirailleur/textures/Body_tirailleur.png"},
+	"hide_materials": ["Material.003"],   # calot d'origine (étoile rouge) : remplacé par le casque Adrian
+	"style": "capote", "top": Color("7d6a40"), "bottom": Color("6e5e3a"), "shoes": Color("3a2818"), "sandals": false,
 	"puttees": 1, "puttee_color": Color("6b5d3c"), "hat": "adrian", "hat_color": Color("6f6c58"), "build": 0.98}
 ## Assaillants : vareuse gris-vert, bottes, casque, sans aucun insigne.
 const ENEMY := {"style": "tunic", "top": Color("5d6457"), "bottom": Color("4f554a"), "shoes": Color("161616"), "sandals": false,

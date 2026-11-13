@@ -26,12 +26,32 @@ func build(look: Dictionary) -> void:
 	_model_path = look.model
 	var inst: Node3D = load(_model_path).instantiate()
 	add_child(inst)
-	var b: AABB = Props.bounds(inst)
-	var s: float = look.get("height", 1.8) / maxf(b.size.y, 0.001)
-	inst.scale = Vector3.ONE * s
-	inst.position = Vector3(-b.get_center().x * s, -b.position.y * s, -b.get_center().z * s)
 	skeleton = inst.find_children("*", "Skeleton3D", true, false)[0]
-	var tex: Texture2D = load(look.albedo) if look.has("albedo") and ResourceLoader.exists(look.albedo) else null
+	# taille mesurée sur le squelette (plus fiable que la boîte des maillages déformés) :
+	# du plus bas des os (pieds) jusqu'à la tête, + 8 % pour le crâne
+	var to_root: Transform3D = Retarget.to_root(inst, skeleton)
+	var rests: Array = []
+	rests.resize(skeleton.get_bone_count())
+	var lo := INF
+	var head_y := -INF
+	var hips := Vector3.ZERO
+	for k in skeleton.get_bone_count():
+		var p := skeleton.get_bone_parent(k)
+		rests[k] = (rests[p] if p >= 0 else Transform3D()) * skeleton.get_bone_rest(k)
+		var w: Vector3 = to_root * (rests[k] as Transform3D).origin
+		var nm := Retarget.clean(skeleton.get_bone_name(k)).to_lower()
+		lo = minf(lo, w.y)
+		if nm in ["head", "mixamorig_head"]:
+			head_y = w.y
+		if nm in ["pelvis", "mixamorig_hips", "hips"]:
+			hips = w
+	var model_h := (head_y - lo) * 1.08 if head_y > lo else 1.8
+	var s: float = look.get("height", 1.8) / maxf(model_h, 0.001)
+	inst.scale = Vector3.ONE * s
+	inst.position = Vector3(-hips.x * s, -lo * s, -hips.z * s)
+	var swaps: Dictionary = look.get("textures", {})
+	if look.has("albedo"):
+		swaps[look.get("albedo_material", "")] = look.albedo
 	var hide: Array = look.get("hide_materials", [])
 	for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
@@ -41,10 +61,12 @@ func build(look: Dictionary) -> void:
 				continue
 			if m.resource_name in hide:
 				mi.set_surface_override_material(k, _invisible())
-			elif tex and m.resource_name == look.get("albedo_material", "") and m is BaseMaterial3D:
+			elif swaps.has(m.resource_name) and m is BaseMaterial3D and ResourceLoader.exists(swaps[m.resource_name]):
 				var mm: BaseMaterial3D = m.duplicate()
-				mm.albedo_texture = tex
+				mm.albedo_texture = load(swaps[m.resource_name])
 				mi.set_surface_override_material(k, mm)
+	if look.get("hat", "") == "adrian" and Props.has("adrian"):
+		_add_helmet()
 	var res: Dictionary = Retarget.library_for(_model_path, inst, skeleton, ANIMS)
 	# le modèle regarde vers +Z dans son espace : on le tourne vers -Z (convention du jeu)
 	inst.rotation.y = PI
@@ -119,7 +141,7 @@ func set_talking(_v: bool) -> void:
 func hand_attachment() -> BoneAttachment3D:
 	var i := -1
 	for k in skeleton.get_bone_count():
-		if Retarget.clean(skeleton.get_bone_name(k)) == "mixamorig_RightHand":
+		if Retarget.clean(skeleton.get_bone_name(k)) in ["mixamorig_RightHand", "hand_r"]:
 			i = k
 	if i < 0:
 		return null
@@ -127,3 +149,30 @@ func hand_attachment() -> BoneAttachment3D:
 	att.bone_idx = i
 	skeleton.add_child(att)
 	return att
+
+
+func _add_helmet() -> void:
+	var head := -1
+	for k in skeleton.get_bone_count():
+		if Retarget.clean(skeleton.get_bone_name(k)) in ["Head", "head", "mixamorig_Head"]:
+			head = k
+	if head < 0:
+		return
+	var att := BoneAttachment3D.new()
+	att.bone_idx = head
+	skeleton.add_child(att)
+	var holder := Node3D.new()
+	att.add_child(holder)
+	var h: Node3D = Props.make("adrian")
+	holder.add_child(h)
+	_place_helmet.call_deferred(holder, att)
+
+
+## Le casque est placé en mètres dans l'espace du monde : on annule l'échelle de l'os,
+## puis on le pose au sommet du crâne.
+func _place_helmet(holder: Node3D, att: BoneAttachment3D) -> void:
+	await get_tree().process_frame
+	var gs: float = att.global_transform.basis.get_scale().x
+	holder.scale = Vector3.ONE / maxf(gs, 0.0001)
+	holder.global_basis = Basis.from_euler(Vector3(0, global_rotation.y, 0)).scaled(Vector3.ONE * 0.95)
+	holder.global_position = att.global_position + Vector3(0, 0.16, 0)
