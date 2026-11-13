@@ -69,6 +69,16 @@ func build(look: Dictionary) -> void:
 					mm.albedo_color = look.skin_tint
 	if look.get("hat", "") == "adrian" and Props.has("adrian"):
 		_add_helmet()
+	# corpulence : on affine le torse et les membres (épaisseur des os, pas la longueur)
+	if look.has("slim"):
+		var k: float = look.slim
+		for b in ["spine_02", "spine_03", "mixamorig_Spine1", "mixamorig_Spine2", "spine02", "spine03", "spine04", "spine05"]:
+			var i := _bone([b])
+			if i >= 0:
+				skeleton.set_bone_pose_scale(i, Vector3(k, 1.0, k))
+	if look.get("no_anim", false):
+		anim = null
+		return
 	var res: Dictionary = Retarget.library_for(_model_path, inst, skeleton, ANIMS)
 	# le modèle regarde vers +Z dans son espace : on le tourne vers -Z (convention du jeu)
 	inst.rotation.y = PI
@@ -94,6 +104,8 @@ static func _invisible() -> StandardMaterial3D:
 
 
 func _play(n: String, speed := 1.0) -> void:
+	if anim == null:
+		return
 	if n != _current and anim.has_animation(n):
 		anim.play(n)
 		_current = n
@@ -101,6 +113,8 @@ func _play(n: String, speed := 1.0) -> void:
 
 
 func animate(speed: float, delta: float, _airborne := false) -> void:
+	if anim == null:
+		return
 	if _action > 0.0:
 		_action -= delta
 		return
