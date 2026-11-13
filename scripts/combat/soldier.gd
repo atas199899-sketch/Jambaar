@@ -5,6 +5,7 @@ extends CharacterBody3D
 ## Les alliés ne meurent pas : ils sont blessés et se relèvent plus tard (choix de jeu).
 
 const Humanoid = preload("res://scripts/characters/humanoid.gd")
+const ModelCharacter = preload("res://scripts/characters/model_character.gd")
 const Rifle = preload("res://scripts/combat/rifle.gd")
 const Fx = preload("res://scripts/combat/fx.gd")
 const Step = preload("res://scripts/core/step.gd")
@@ -49,7 +50,7 @@ func setup(p_team: int, look: Dictionary, p_battle, name_text := "") -> void:
 	col.shape = cap
 	col.position.y = 0.875
 	add_child(col)
-	model = Humanoid.new()
+	model = (ModelCharacter.new() if look.has("model") and ResourceLoader.exists(look.model) else Humanoid.new())
 	add_child(model)
 	model.build(look)
 	rifle = Rifle.new()
@@ -58,6 +59,7 @@ func setup(p_team: int, look: Dictionary, p_battle, name_text := "") -> void:
 		hand.add_child(rifle)
 		rifle.position = Vector3(0.0, 0.08, 0.02)
 		rifle.rotation = Vector3(PI / 2.0, 0.0, 0.0)
+		_fix_rifle_scale.call_deferred()
 	else:
 		model.add_child(rifle)
 	rifle.reserve = 999
@@ -81,6 +83,15 @@ func setup(p_team: int, look: Dictionary, p_battle, name_text := "") -> void:
 	_bubble.position.y = 2.35
 	_bubble.visible = false
 	add_child(_bubble)
+
+
+## Les os des modèles importés ont leur propre échelle : on ramène l'arme à sa taille réelle,
+## et on recale sa position dans la main (exprimée en mètres).
+func _fix_rifle_scale() -> void:
+	var gs: Vector3 = rifle.get_parent().global_transform.basis.get_scale()
+	if gs.x > 0.0 and absf(gs.x - 1.0) > 0.05:
+		rifle.scale = Vector3.ONE / gs.x
+		rifle.position = rifle.position / gs.x
 
 
 func say(text: String, t := 2.5) -> void:

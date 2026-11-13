@@ -22,7 +22,11 @@ const TIRAILLEUR := {"style": "capote", "top": Color("7d6a40"), "bottom": Color(
 	"puttees": 1, "puttee_color": Color("6b5d3c"), "hat": "adrian", "hat_color": Color("6f6c58"), "build": 0.98}
 ## Assaillants : vareuse gris-vert, bottes, casque, sans aucun insigne.
 const ENEMY := {"style": "tunic", "top": Color("5d6457"), "bottom": Color("4f554a"), "shoes": Color("161616"), "sandals": false,
-	"puttees": 2, "hat": "stahlhelm", "hat_color": Color("4a5045"), "skin_tint": Color(0.86, 0.74, 0.66)}
+	"puttees": 2, "hat": "stahlhelm", "hat_color": Color("4a5045"), "skin_tint": Color(0.86, 0.74, 0.66),
+	# vrai modèle 3D (CC BY) : insignes effacés de la texture, filet de camouflage (1944) retiré
+	"model": "res://assets/characters/enemy/panzergrenadier.glb", "height": 1.78,
+	"albedo": "res://assets/characters/enemy/uniforme_sans_insignes.png", "albedo_material": "Material.003",
+	"hide_materials": ["scrimwire_low", "scrimleaves_low"]}
 
 var player
 var hud
