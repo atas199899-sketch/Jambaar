@@ -23,6 +23,7 @@ var mouse_sensitivity := 0.0025
 var stick_sensitivity := 2.6
 var controls_locked := false
 var hud = null
+var look := {}           # apparence (vide = tenue par défaut)
 var focus: Node = null  # personnage ou véhicule avec qui on peut interagir
 var vehicle = null      # véhicule conduit
 var _cam_free := 0.0    # temps pendant lequel la souris garde la main sur la caméra
@@ -43,7 +44,7 @@ func _ready() -> void:
 
 	model = Humanoid.new()
 	add_child(model)
-	model.build({"model": PLAYER_MODEL, "top": Color("f0b93a"), "bottom": Color("2b3a55"), "shoes": Color("e8e8e8"), "hair": "Hair_Buzzed", "beard": false, "height": 1.78})
+	model.build(look if not look.is_empty() else {"model": PLAYER_MODEL, "top": Color("f0b93a"), "bottom": Color("2b3a55"), "shoes": Color("e8e8e8"), "hair": "Hair_Buzzed", "beard": false, "height": 1.78})
 
 	cam_pivot = Node3D.new()
 	cam_pivot.position.y = 1.6

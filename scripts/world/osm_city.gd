@@ -17,6 +17,8 @@ const WALK_W := 2.4        # largeur des trottoirs
 const WALK_H := 0.15       # hauteur des trottoirs
 const JUNCTION_CUT := 8.0  # on interrompt les trottoirs aux carrefours
 const MAX_VEHICLES := 260
+## Dakar en 1939 : immeubles bas, pas de véhicules modernes, pas d'enseignes actuelles.
+var era_1939 := false
 const LAMP_LIGHTS := 18    # lampes réellement éclairantes autour du joueur
 
 var drive_nodes: Array[Vector3] = []   # réseau routier pour la circulation automatique
@@ -61,7 +63,8 @@ func build() -> void:
 	_build_props()
 	_build_lamp_lights()
 	_assign_places()
-	_build_labels()
+	if not era_1939:
+		_build_labels()
 	print("Dakar : %d bâtiments, %d rues, %d véhicules garés, %d arbres, %d lampadaires" % [data.buildings.size(), data.roads.size(), _park_vehicles.size(), _trees.size(), _lamps.size()])
 
 
@@ -100,6 +103,8 @@ var mat_water: StandardMaterial3D
 func _make_materials() -> void:
 	mat_ground = _pbr("sand", Color(1.0, 0.95, 0.88), 0.12)
 	mat_road = _pbr("asphalt", Color(0.9, 0.9, 0.9), 0.14)
+	if era_1939:
+		mat_road = _pbr("sand", Color(0.92, 0.84, 0.7), 0.12)   # rues en sable
 	mat_walk = _pbr("pavers", Color(0.95, 0.92, 0.86), 0.4)
 	mat_roof = _pbr("dirty_concrete", Color(0.75, 0.72, 0.68), 0.15)
 	mat_park = _pbr("sand", Color(0.42, 0.62, 0.3), 0.12)
@@ -411,7 +416,8 @@ func _sidewalk(seg: PackedVector2Array, hw: float, side: float, ends: Array, roa
 	var d0 := 6.0 if side > 0 else 21.0
 	while d0 < lcum[-1] - 3.0:
 		var p := _at(lamp_line, lcum, d0)
-		_lamps.append(Vector3(p.x, WALK_H, p.y))
+		if not era_1939:
+			_lamps.append(Vector3(p.x, WALK_H, p.y))
 		d0 += 30.0
 	if road_type in ["primary", "secondary", "tertiary", "trunk"]:
 		var tree_line := _offset_line(seg, side * (hw + WALK_W - 0.9))
@@ -434,7 +440,7 @@ func _sidewalk(seg: PackedVector2Array, hw: float, side: float, ends: Array, roa
 	ends.append(first)
 	ends.append(first + count - 1)
 	# véhicules garés le long du trottoir (côté chaussée)
-	if road_type in ["residential", "tertiary", "unclassified", "secondary", "living_street"] and _vehicle_count < MAX_VEHICLES:
+	if road_type in ["residential", "tertiary", "unclassified", "secondary", "living_street"] and _vehicle_count < MAX_VEHICLES and not era_1939:
 		var park_line := _offset_line(seg, side * (hw + 0.3))   # à cheval sur le trottoir, comme à Dakar
 		var pcum := _cumulative(park_line)
 		var dp := rng.randf_range(4.0, 12.0)
@@ -498,6 +504,10 @@ const PALETTE_MEDINA := [Color("e3c79a"), Color("d9a86c"), Color("f0e4c8"), Colo
 
 
 func _levels(b: Dictionary, area: float, center: Vector2) -> int:
+	if era_1939:
+		if center.y > -650.0:
+			return rng.randi_range(2, 4) if area > 150.0 else rng.randi_range(1, 3)
+		return 1 if rng.randf() < 0.7 else 2
 	if b.has("l"):
 		return clampi(int(b.l), 1, 30)
 	var plateau := center.y > -650.0
