@@ -110,7 +110,7 @@ func animate(speed: float, delta: float, _airborne := false) -> void:
 		else:
 			_play("Crouch_Idle")
 	elif aiming and speed < 0.3:
-		_play("Pistol_Aim_Neutral")
+		_play("Idle")
 	elif speed > 4.2:
 		_play("Sprint", clampf(speed / 5.5, 0.8, 1.3))
 	elif speed > 2.4:
@@ -195,12 +195,21 @@ func _place_helmet(holder: Node3D, att: BoneAttachment3D) -> void:
 var _back_att: BoneAttachment3D
 var _rifle_in_hand := true
 var _slung: Node3D = null
+var _shouldered: Node3D = null
+var aim_target = null        # point visé (Vector3) : le canon est orienté exactement vers lui
+var aim_pitch := 0.0          # inclinaison verticale de la visée (radians, positif = vers le haut)
+var _ik_r: SkeletonIK3D
+var _ik_l: SkeletonIK3D
+var _grip_r: Node3D
+var _grip_l: Node3D
 
 
 ## Le fusil à la bretelle est recalé à chaque image, après la mise à jour du squelette.
 func _process(_d: float) -> void:
 	if _slung and not _rifle_in_hand and is_instance_valid(_slung):
 		_sling(_slung)
+	elif _shouldered and _rifle_in_hand and is_instance_valid(_shouldered):
+		_shoulder(_shouldered)
 
 
 ## Met le fusil dans la main (visée, tir) ou à la bretelle dans le dos (marche, repos).
@@ -215,9 +224,12 @@ func hold_rifle(rifle: Node3D, in_hand: bool) -> void:
 	_rifle_in_hand = in_hand
 	if in_hand:
 		_slung = null
-		rifle.reparent(rifle.get_meta("hand_parent"), false)
-		rifle.transform = rifle.get_meta("hand_xf")
+		rifle.reparent(self, false)
+		_shouldered = rifle
+		_start_ik(rifle)
 		return
+	_shouldered = null
+	_stop_ik()
 	if _back_att == null:
 		var spine := -1
 		for k in skeleton.get_bone_count():
@@ -242,4 +254,81 @@ func _sling(rifle: Node3D) -> void:
 	var muzzle_dir := (up * 0.85 - right * 0.5).normalized()
 	var back := -fwd
 	var b := Basis.looking_at(muzzle_dir, back)
-	rifle.global_transform = Transform3D(b, _back_att.global_position + back * 0.3 - up * 0.05)
+	rifle.global_transform = Transform3D(b, _back_att.global_position + back * 0.17 - up * 0.05)
+
+
+
+# ---------------------------------------------------------------- fusil épaulé (pose de tir construite par code)
+
+func _bone(names: Array) -> int:
+	for k in skeleton.get_bone_count():
+		if Retarget.clean(skeleton.get_bone_name(k)) in names:
+			return k
+	return -1
+
+
+## Crosse contre l'épaule droite, canon dans la direction visée, à hauteur de joue.
+func _shoulder(rifle: Node3D) -> void:
+	var sh := _bone(["upperarm_r", "mixamorig_RightArm"])
+	var neck := _bone(["neck_01", "mixamorig_Neck"])
+	if sh < 0:
+		return
+	var sk_xf := skeleton.global_transform
+	var shoulder: Vector3 = sk_xf * skeleton.get_bone_global_pose(sh).origin
+	var neck_p: Vector3 = sk_xf * skeleton.get_bone_global_pose(neck).origin if neck >= 0 else shoulder
+	var fwd := -global_basis.z.normalized()
+	var right := global_basis.x.normalized()
+	var aim := (fwd * cos(aim_pitch) + Vector3.UP * sin(aim_pitch)).normalized()
+	# la crosse (≈ 0,38 m derrière la poignée) se cale entre l'épaule et le cou, un peu plus haut
+	var butt := shoulder.lerp(neck_p, 0.35) + Vector3.UP * 0.02 + fwd * 0.02
+	if aim_target != null:
+		aim = ((aim_target as Vector3) - butt).normalized()
+	var grip := butt + aim * 0.36
+	var up := right.cross(aim).normalized() * -1.0
+	if up.y < 0.0:
+		up = -up
+	rifle.global_transform = Transform3D(Basis.looking_at(aim, up), grip)
+
+
+func _start_ik(rifle: Node3D) -> void:
+	if _ik_r == null:
+		_grip_r = Node3D.new()
+		_grip_l = Node3D.new()
+		var r_up := _bone(["upperarm_r", "mixamorig_RightArm"])
+		var r_hand := _bone(["hand_r", "mixamorig_RightHand"])
+		var l_up := _bone(["upperarm_l", "mixamorig_LeftArm"])
+		var l_hand := _bone(["hand_l", "mixamorig_LeftHand"])
+		if r_up < 0 or r_hand < 0 or l_up < 0 or l_hand < 0:
+			return
+		_ik_r = _make_ik(skeleton.get_bone_name(r_up), skeleton.get_bone_name(r_hand), _grip_r)
+		_ik_l = _make_ik(skeleton.get_bone_name(l_up), skeleton.get_bone_name(l_hand), _grip_l)
+	# cibles des mains, attachées au fusil : poignée (main droite) et fût (main gauche)
+	for g in [_grip_r, _grip_l]:
+		if g.get_parent():
+			g.get_parent().remove_child(g)
+		rifle.add_child(g)
+	_grip_r.transform = Transform3D(Basis.from_euler(Vector3(0, 0, -PI / 2.0)), Vector3(0.02, -0.04, 0.02))
+	_grip_l.transform = Transform3D(Basis.from_euler(Vector3(0, 0, PI / 2.0)), Vector3(-0.02, -0.03, -0.32))
+	_ik_r.target_node = _ik_r.get_path_to(_grip_r)
+	_ik_l.target_node = _ik_l.get_path_to(_grip_l)
+	_ik_r.start()
+	_ik_l.start()
+
+
+func _make_ik(root: String, tip: String, target: Node3D) -> SkeletonIK3D:
+	var ik := SkeletonIK3D.new()
+	skeleton.add_child(ik)
+	ik.root_bone = root
+	ik.tip_bone = tip
+	ik.interpolation = 1.0
+	ik.override_tip_basis = false
+	ik.max_iterations = 8
+	ik.set_meta("target", target)
+	ik.target_node = ik.get_path_to(target) if target.is_inside_tree() else NodePath()
+	return ik
+
+
+func _stop_ik() -> void:
+	if _ik_r:
+		_ik_r.stop()
+		_ik_l.stop()

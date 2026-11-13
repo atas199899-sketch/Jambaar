@@ -154,9 +154,11 @@ func _physics_process(delta: float) -> void:
 	var locked := controls_locked
 	aiming = not locked and Input.is_action_pressed("aim")
 	# caméra : plus proche et plus serrée en visée
-	spring.spring_length = lerpf(spring.spring_length, 1.3 if aiming else (2.4 if crouching else 3.0), clampf(10.0 * delta, 0.0, 1.0))
+	spring.spring_length = lerpf(spring.spring_length, 0.85 if aiming else (2.4 if crouching else 3.0), clampf(10.0 * delta, 0.0, 1.0))
+	# en visée, la caméra passe au-dessus de l'épaule droite : la tête sort du cadre
+	spring.position.x = lerpf(spring.position.x, 0.62 if aiming else 0.55, clampf(10.0 * delta, 0.0, 1.0))
 	camera.fov = lerpf(camera.fov, 48.0 if aiming else 70.0, clampf(10.0 * delta, 0.0, 1.0))
-	cam_pivot.position.y = lerpf(cam_pivot.position.y, 1.05 if crouching and not aiming else 1.55, clampf(8.0 * delta, 0.0, 1.0))
+	cam_pivot.position.y = lerpf(cam_pivot.position.y, 1.05 if crouching and not aiming else (1.62 if aiming else 1.55), clampf(8.0 * delta, 0.0, 1.0))
 	# déplacement
 	var input := Vector2.ZERO if locked else Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var dir := Vector3(input.x, 0.0, input.y).rotated(Vector3.UP, yaw)
@@ -180,6 +182,12 @@ func _physics_process(delta: float) -> void:
 	model.set_combat_pose(crouching and not aiming, aiming)
 	if model.has_method("hold_rifle"):
 		model.hold_rifle(rifle, aiming or rifle.reloading > 0.0)
+		model.aim_pitch = pitch + 0.12   # la caméra est au-dessus de l'épaule
+		# le canon vise le point sous le réticule (premier obstacle sur l'axe de la caméra)
+		var cf := -camera.global_transform.basis.z
+		var q := PhysicsRayQueryParameters3D.create(camera.global_position, camera.global_position + cf * 300.0, 1 | 2, [get_rid()])
+		var hit := get_world_3d().direct_space_state.intersect_ray(q)
+		model.aim_target = hit.position if not hit.is_empty() else camera.global_position + cf * 300.0
 	model.animate(hv.length(), delta)
 	if aiming and Input.is_action_just_pressed("fire"):
 		_fire()
