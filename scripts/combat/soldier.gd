@@ -207,6 +207,8 @@ func _physics_process(delta: float) -> void:
 				if next != Vector3.INF:
 					cover_point = next
 					state = State.ADVANCE
+	if model.has_method("hold_rifle"):
+		model.hold_rifle(rifle, state == State.COVER and _exposed > 0.0)
 	if _vaulting:
 		return
 	velocity.x = hv.x

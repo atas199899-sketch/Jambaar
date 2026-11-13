@@ -381,13 +381,16 @@ const SQUAD := [["Sergent Mamadou", Color("7a6740")], ["Ousmane", Color("806c44"
 
 
 func _spawn_allies() -> void:
-	var spots := cover_ally.duplicate()
+	# seulement le muret de la ligne de défense (pas les haies du côté des assaillants)
+	var spots := cover_ally.filter(func(p): return absf(p.z - (DEFENSE_Z + 1.0)) < 0.5)
 	spots.sort_custom(func(a, b): return absf(a.x) < absf(b.x))
 	for i in SQUAD.size():
 		var s := Soldier.new()
 		add_child(s)
 		var look := TIRAILLEUR.duplicate()
 		look["top"] = SQUAD[i][1]
+		look["skin_tint"] = [Color(1.0, 0.95, 0.9), Color(0.78, 0.72, 0.68), Color(1.1, 1.0, 0.92), Color(0.86, 0.78, 0.72), Color(0.95, 0.85, 0.8)][i % 5]
+		look["height"] = [1.82, 1.74, 1.79, 1.70, 1.85][i % 5]
 		if i == 0:
 			look["beard"] = true
 		s.setup(0, look, self, SQUAD[i][0])

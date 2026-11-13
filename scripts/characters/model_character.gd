@@ -65,6 +65,8 @@ func build(look: Dictionary) -> void:
 				var mm: BaseMaterial3D = m.duplicate()
 				mm.albedo_texture = load(swaps[m.resource_name])
 				mi.set_surface_override_material(k, mm)
+				if m.resource_name == look.get("skin_material", "Body") and look.has("skin_tint"):
+					mm.albedo_color = look.skin_tint
 	if look.get("hat", "") == "adrian" and Props.has("adrian"):
 		_add_helmet()
 	var res: Dictionary = Retarget.library_for(_model_path, inst, skeleton, ANIMS)
@@ -165,6 +167,15 @@ func _add_helmet() -> void:
 	att.add_child(holder)
 	var h: Node3D = Props.make("adrian")
 	holder.add_child(h)
+	# le modèle d'origine est vert vif : on le ternit vers le kaki-brun des casques de 1940
+	for mi: MeshInstance3D in h.find_children("*", "MeshInstance3D", true, false):
+		for k in mi.mesh.get_surface_count():
+			var m := mi.mesh.surface_get_material(k)
+			if m is BaseMaterial3D:
+				var mm: BaseMaterial3D = m.duplicate()
+				mm.albedo_color = mm.albedo_color * Color(0.62, 0.52, 0.36)
+				mm.roughness = 0.75
+				mi.set_surface_override_material(k, mm)
 	_place_helmet.call_deferred(holder, att)
 
 
@@ -176,3 +187,59 @@ func _place_helmet(holder: Node3D, att: BoneAttachment3D) -> void:
 	holder.scale = Vector3.ONE / maxf(gs, 0.0001)
 	holder.global_basis = Basis.from_euler(Vector3(0, global_rotation.y, 0)).scaled(Vector3.ONE * 0.95)
 	holder.global_position = att.global_position + Vector3(0, 0.16, 0)
+
+
+
+# ---------------------------------------------------------------- fusil : en main ou à la bretelle
+
+var _back_att: BoneAttachment3D
+var _rifle_in_hand := true
+var _slung: Node3D = null
+
+
+## Le fusil à la bretelle est recalé à chaque image, après la mise à jour du squelette.
+func _process(_d: float) -> void:
+	if _slung and not _rifle_in_hand and is_instance_valid(_slung):
+		_sling(_slung)
+
+
+## Met le fusil dans la main (visée, tir) ou à la bretelle dans le dos (marche, repos).
+func hold_rifle(rifle: Node3D, in_hand: bool) -> void:
+	if rifle == null or not rifle.is_inside_tree():
+		return
+	if not rifle.has_meta("hand_parent"):
+		rifle.set_meta("hand_parent", rifle.get_parent())
+		rifle.set_meta("hand_xf", rifle.transform)
+	if in_hand == _rifle_in_hand:
+		return
+	_rifle_in_hand = in_hand
+	if in_hand:
+		_slung = null
+		rifle.reparent(rifle.get_meta("hand_parent"), false)
+		rifle.transform = rifle.get_meta("hand_xf")
+		return
+	if _back_att == null:
+		var spine := -1
+		for k in skeleton.get_bone_count():
+			if Retarget.clean(skeleton.get_bone_name(k)) in ["spine_03", "mixamorig_Spine2"]:
+				spine = k
+		if spine < 0:
+			return
+		_back_att = BoneAttachment3D.new()
+		_back_att.bone_idx = spine
+		skeleton.add_child(_back_att)
+	rifle.reparent(_back_att, false)
+	_slung = rifle
+
+
+## Fusil en travers du dos, canon vers le haut au-dessus de l'épaule gauche.
+func _sling(rifle: Node3D) -> void:
+	if _rifle_in_hand or not is_instance_valid(rifle):
+		return
+	var fwd := -global_basis.z.normalized()
+	var right := global_basis.x.normalized()
+	var up := Vector3.UP
+	var muzzle_dir := (up * 0.85 - right * 0.5).normalized()
+	var back := -fwd
+	var b := Basis.looking_at(muzzle_dir, back)
+	rifle.global_transform = Transform3D(b, _back_att.global_position + back * 0.3 - up * 0.05)

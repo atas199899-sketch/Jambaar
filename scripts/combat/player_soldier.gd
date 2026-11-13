@@ -178,6 +178,8 @@ func _physics_process(delta: float) -> void:
 	elif hv.length() > 0.2:
 		model.rotation.y = lerp_angle(model.rotation.y, atan2(-hv.x, -hv.z), clampf(10.0 * delta, 0.0, 1.0))
 	model.set_combat_pose(crouching and not aiming, aiming)
+	if model.has_method("hold_rifle"):
+		model.hold_rifle(rifle, aiming or rifle.reloading > 0.0)
 	model.animate(hv.length(), delta)
 	if aiming and Input.is_action_just_pressed("fire"):
 		_fire()
