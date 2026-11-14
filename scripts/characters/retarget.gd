@@ -66,6 +66,15 @@ static func to_root(top: Node, sk: Skeleton3D) -> Transform3D:
 	return t
 
 
+## Repère orthonormé : X = direction de l'os, Z = « avant » rendu perpendiculaire.
+static func _frame(d: Vector3, fwd: Vector3) -> Basis:
+	var x := d.normalized()
+	var ref := fwd if absf(x.dot(fwd)) < 0.95 else Vector3.UP
+	var z := (ref - x * x.dot(ref)).normalized()
+	var y := z.cross(x)
+	return Basis(x, y, z)
+
+
 static func _global_rests(sk: Skeleton3D) -> Array[Transform3D]:
 	var out: Array[Transform3D] = []
 	out.resize(sk.get_bone_count())
@@ -77,7 +86,8 @@ static func _global_rests(sk: Skeleton3D) -> Array[Transform3D]:
 
 ## Construit (ou récupère) la bibliothèque d'animations convertie pour ce squelette.
 ## `key` identifie le modèle (son chemin), `anim_names` les animations à convertir.
-static func library_for(key: String, top: Node3D, sk: Skeleton3D, anim_names: Array) -> Dictionary:
+static func library_for(key: String, top: Node3D, sk: Skeleton3D, anim_names: Array, arm_in_deg := 0.0) -> Dictionary:
+	key = key + ":" + str(arm_in_deg)
 	if _cache.has(key):
 		return _cache[key]
 	var src: Node3D = load(ANIMS_PATH).instantiate()
@@ -96,7 +106,7 @@ static func library_for(key: String, top: Node3D, sk: Skeleton3D, anim_names: Ar
 		var si := ssk.find_bone(sname)
 		if si < 0:
 			continue
-		for cand in MAP[sname]:
+		for cand in [sname] + MAP[sname]:   # même nom d'abord (squelettes identiques, ex. MakeHuman « Game engine »)
 			if t_index.has(cand):
 				pairs[si] = t_index[cand]
 				break
@@ -124,6 +134,7 @@ static func library_for(key: String, top: Node3D, sk: Skeleton3D, anim_names: Ar
 		t_rest_q[i] = Quaternion((t_space * t_rest[i].basis).orthonormalized())
 	# alignement des poses de repos (T-pose / A-pose) os par os
 	var fix := {}
+	var tdir := {}   # direction de chaque os cible au repos (espace commun)
 	for si in pairs:
 		var ti: int = pairs[si]
 		fix[si] = Quaternion.IDENTITY
@@ -132,8 +143,13 @@ static func library_for(key: String, top: Node3D, sk: Skeleton3D, anim_names: Ar
 		if sc >= 0 and pairs.has(sc):
 			var ds := (s_rb * (s_rest[sc].origin - s_rest[si].origin)).normalized()
 			var dt := (t_space * (t_rest[pairs[sc]].origin - t_rest[ti].origin)).normalized()
-			if ds.length() > 0.5 and dt.length() > 0.5 and ds.dot(dt) < 0.9999:
-				fix[si] = Quaternion(dt, ds)
+			tdir[si] = dt
+			if ds.length() > 0.5 and dt.length() > 0.5:
+				# repère géométrique : direction de l'os + vers l'avant du personnage (pour la torsion)
+				var fwd := Vector3(0, 0, 1)
+				var bs := _frame(ds, fwd)
+				var bt := _frame(dt, fwd)
+				fix[si] = Quaternion((bs * bt.inverse()).orthonormalized())
 	# hauteur des hanches pour adapter le déplacement du bassin
 	var sp := ssk.find_bone("pelvis")
 	var tp: int = pairs.get(sp, -1)
@@ -194,6 +210,31 @@ static func library_for(key: String, top: Node3D, sk: Skeleton3D, anim_names: Ar
 				if mapped >= 0:
 					var delta: Quaternion = s_glob[mapped] * (s_rest_q[mapped] as Quaternion).inverse()
 					var want: Quaternion = delta * (fix[mapped] as Quaternion) * (t_rest_q[i] as Quaternion)
+					if arm_in_deg != 0.0 and anim_name == "Idle" and tdir.has(mapped):
+						var sn2 := ssk.get_bone_name(mapped)
+						var side_v := s_left.normalized()
+						var sgn := 1.0 if sn2.ends_with("_l") else -1.0
+						var down := Vector3.ZERO
+						if sn2.begins_with("upperarm"):
+							down = (Vector3.DOWN + side_v * sgn * 0.24 + Vector3(0, 0, 0.03)).normalized()
+						elif sn2.begins_with("lowerarm") or sn2.begins_with("hand"):
+							down = (Vector3.DOWN + side_v * sgn * 0.12 + Vector3(0, 0, 0.07)).normalized()
+						elif sn2.begins_with("thigh"):
+							down = (Vector3.DOWN + side_v * sgn * 0.07).normalized()
+						elif sn2.begins_with("calf"):
+							down = (Vector3.DOWN + side_v * sgn * 0.03 + Vector3(0, 0, -0.03)).normalized()
+						if down != Vector3.ZERO:
+							var fr := _frame(down, Vector3(0, 0, 1)) * _frame(tdir[mapped], Vector3(0, 0, 1)).inverse()
+							want = Quaternion(fr.orthonormalized()) * (t_rest_q[i] as Quaternion)
+							t_glob[i] = want
+							out.rotation_track_insert_key(rot_tracks[i], t, (parent_q.inverse() * want).normalized())
+							continue
+					if arm_in_deg != 0.0 and false:
+						var sn := ssk.get_bone_name(mapped)
+						if sn in ["upperarm_l", "lowerarm_l", "hand_l"]:
+							want = Quaternion(Vector3(0, 0, 1), -deg_to_rad(arm_in_deg)) * want
+						elif sn in ["upperarm_r", "lowerarm_r", "hand_r"]:
+							want = Quaternion(Vector3(0, 0, 1), deg_to_rad(arm_in_deg)) * want
 					t_glob[i] = want
 					out.rotation_track_insert_key(rot_tracks[i], t, (parent_q.inverse() * want).normalized())
 				else:
@@ -205,6 +246,8 @@ static func library_for(key: String, top: Node3D, sk: Skeleton3D, anim_names: Ar
 				var s_parent_g: Transform3D = s_rest[sp_parent] if sp_parent >= 0 else Transform3D()
 				var s_delta: Vector3 = s_root * (s_parent_g * s_pos) - s_root * s_rest[sp].origin
 				s_delta *= t_hip_h / maxf(s_hip_h, 0.01)
+				if arm_in_deg != 0.0 and anim_name == "Idle":
+					s_delta = Vector3.ZERO   # jambes redressées : bassin à sa hauteur de repos
 				s_delta = align.inverse() * s_delta
 				var tp_parent := sk.get_bone_parent(tp)
 				var t_parent_g: Transform3D = t_rest[tp_parent] if tp_parent >= 0 else Transform3D()

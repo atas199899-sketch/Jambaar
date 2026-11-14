@@ -49,6 +49,26 @@ func build(look: Dictionary) -> void:
 	var s: float = look.get("height", 1.8) / maxf(model_h, 0.001)
 	inst.scale = Vector3.ONE * s
 	inst.position = Vector3(-hips.x * s, -lo * s, -hips.z * s)
+	# normales abîmées à l'import (certains FBX) : on les recalcule, lissées
+	if look.get("fix_normals", false):
+		for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
+			var src: Mesh = mi.mesh
+			var am := ArrayMesh.new()
+			for k in src.get_surface_count():
+				var st := SurfaceTool.new()
+				st.create_from(src, k)
+				if src.surface_get_format(k) & Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS:
+					st.set_skin_weight_count(SurfaceTool.SKIN_8_WEIGHTS)
+				st.set_smooth_group(0)
+				st.generate_normals()
+				st.generate_tangents()
+				var arr := st.commit_to_arrays()
+				var nv: int = (arr[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+				var nb: int = (arr[Mesh.ARRAY_BONES] as PackedInt32Array).size() if arr[Mesh.ARRAY_BONES] != null else 0
+				var flags: int = Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS if nv > 0 and nb == nv * 8 else 0
+				am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr, [], {}, flags)
+				am.surface_set_material(k, src.surface_get_material(k))
+			mi.mesh = am
 	var swaps: Dictionary = look.get("textures", {})
 	if look.has("albedo"):
 		swaps[look.get("albedo_material", "")] = look.albedo
@@ -58,6 +78,11 @@ func build(look: Dictionary) -> void:
 		for k in mi.mesh.get_surface_count():
 			var m: Material = mi.mesh.surface_get_material(k)
 			if m == null:
+				continue
+			if look.get("flat", false) and m.resource_name.begins_with("male_"):
+				var fm := StandardMaterial3D.new()
+				fm.albedo_color = Color(0.85, 0.82, 0.75)
+				mi.set_surface_override_material(k, fm)
 				continue
 			if m.resource_name in hide:
 				mi.set_surface_override_material(k, _invisible())
@@ -79,7 +104,7 @@ func build(look: Dictionary) -> void:
 	if look.get("no_anim", false):
 		anim = null
 		return
-	var res: Dictionary = Retarget.library_for(_model_path, inst, skeleton, ANIMS)
+	var res: Dictionary = Retarget.library_for(_model_path, inst, skeleton, ANIMS, look.get("arm_in", 0.0))
 	# le modèle regarde vers +Z dans son espace : on le tourne vers -Z (convention du jeu)
 	inst.rotation.y = PI
 	anim = AnimationPlayer.new()

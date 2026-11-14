@@ -12,6 +12,10 @@ const LOOKS := {
 		"textures": {"male_casualsuit03": "res://assets/characters/civils/african_man_1/textures/demba_1939_diffuse.png"}},
 	"demba_d": {"model": "res://assets/characters/civils/african_man_1/scene.gltf", "height": 1.78, "hide_materials": ["fedora", "fedora_cocked.001"], "no_anim": true, "slim": 0.85,
 		"textures": {"male_casualsuit03": "res://assets/characters/civils/african_man_1/textures/demba_1939_diffuse.png"}},
+	"demba_mh": {"model": "res://assets/characters/makehuman/demba/demba.fbx", "height": 1.78, "arm_in": 14.0, "fix_normals": true,
+		"textures": {"male_casualsuit01": "res://assets/characters/makehuman/demba/textures/demba_1939_diffuse.png"}},
+	"demba_flat": {"model": "res://assets/characters/makehuman/demba/demba.fbx", "height": 1.78, "arm_in": 14.0, "fix_normals": true, "flat": true},
+	"control": {"model": "res://assets/characters/quaternius/Superhero_Male_FullBody.gltf", "height": 1.78},
 	"demba_b": {"model": "res://assets/characters/civils/african_man_1/scene.gltf", "height": 1.78, "hide_materials": ["fedora", "fedora_cocked.001"]},
 }
 
